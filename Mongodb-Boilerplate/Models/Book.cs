@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Mongodb_Boilerplate.Services;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace Mongodb_Boilerplate.Models;
@@ -16,7 +17,7 @@ public class Book : IDocument
     public string BookName { get; set; } = null!;
 
     public decimal Price { get; set; }
-
+    
     public string Category { get; set; } = null!;
 
     public string Author { get; set; } = null!;

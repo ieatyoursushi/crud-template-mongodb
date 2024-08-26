@@ -9,3 +9,4 @@ public interface IDocument
     [BsonRepresentation(BsonType.ObjectId)] 
     string? Id { get; set; }
 }
+
