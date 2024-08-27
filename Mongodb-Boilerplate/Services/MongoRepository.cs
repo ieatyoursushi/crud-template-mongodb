@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.ObjectModel;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -19,18 +20,24 @@ public class MongoRepository
     }
 
     //getDocument method
-    public async Task<List<T>> GetAllDocumentsAsync<T>(string collectionName)
-    where T: IDocument
+    public async Task<IList> GetAllDocumentsAsync<T>(Type documentType, string collectionName)
     {
         var collection = _database.GetCollection<T>(collectionName);
-        return await collection.Find(_ => true).ToListAsync();
+        var listAsync = await collection.Find(_ => true).ToListAsync();
+        return listAsync;
     }
     public async Task<T> GetDocumentByIdAsync<T>(string collectionName, string documentId)
     where T: IDocument {
         var collection =_database.GetCollection<T>(collectionName);
         return await collection.Find(x => x.Id == documentId).FirstOrDefaultAsync();
     }
-    
+
+    public async Task DeleteDocumentByIdAsync<T>(string collectionName, string documentId) 
+        where T : IDocument
+    {
+        var collection = _database.GetCollection<T>(collectionName);
+        await collection.DeleteOneAsync(x => x.Id == documentId);
+    }
     
     //tenary type-loose document retrieving method in progress
     public async Task<List<BsonDocument>> GetDocumentsByIdAsync(string fieldName, string fieldValue, string collectionName)
