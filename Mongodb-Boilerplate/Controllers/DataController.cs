@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 using Microsoft.AspNetCore.Mvc;
 using Mongodb_Boilerplate.Services;
 using MongoDB.Bson;
@@ -25,23 +26,12 @@ public class DataController : Controller
          {
              return BadRequest("Invalid Document/model-class type");
          } 
-         var documents = await GetDocument("GetAllDocumentsAsync", bsonDocumentType, new object[] { bsonDocumentType, collectionName }).ConfigureAwait(false);
+         var documents = await GenericTypeConverter.genericTypeConversion(_database,"GetAllDocumentsAsync", bsonDocumentType, new object[] { bsonDocumentType, collectionName }).ConfigureAwait(false) as IList;
          if (documents == null)
          {
              return NotFound();
          }
- 
-         //converts IDocuments list to readable BsonDocumentType list (ex: List<Book>) 
-         //so each object returned as json in the list has all properties intead of just Id from the List<IDocuments>
-         //tldr: snippet converts List<IDocument> -> List<ModelType> from documentType
-         Type listType = typeof(List<>).MakeGenericType(bsonDocumentType);
-         var concreteDocuments = (IList)Activator.CreateInstance(listType);
-         foreach (var document in (IEnumerable)documents)
-         {
-             concreteDocuments.Add(document);
-         }
-         //logic flaw: GetAllDocumentsAsync in MongoRepository needs to return List<T> instead of List<IDocument>;
-         return Ok(concreteDocuments);
+         return Ok(documents);
      }
     //refactor code to have type in mind
     [HttpGet("search/{documentType}/{collectionName}/{id}")]
@@ -52,36 +42,33 @@ public class DataController : Controller
         {
             return BadRequest("Invalid Document/model-class type");
         }
-        var document =  await GetDocument("GetDocumentByIdAsync", bsonDocumentType, new object?[]{collectionName, id});
+        var document =  await GenericTypeConverter.genericTypeConversion(_database,"GetDocumentByIdAsync", bsonDocumentType, new object?[]{collectionName, id});
         if (document == null)
         {
             return NotFound();
         }
         return Ok(document);
-        //explicit inline type search
-        // IDocument bookDocument = await database.GetDocumentByIdAsync<Book>(collectionName, id);
-        // if (bookDocument is null)
-        // {
-        //     return NotFound();
-        // }
-        // return Ok(bookDocument);
     }
-    //generic method,type for the generic method, object of {params}
-    [HttpGet]
-    public virtual async Task<object?> GetDocument(string databaseMethod,Type bsonDocumentType, [FromQuery] object[] parameters)
-    {
-        MethodInfo method = typeof(MongoRepository).GetMethod(databaseMethod).MakeGenericMethod(bsonDocumentType);
-        var task = (Task)method.Invoke(_database, parameters);
-        await task.ConfigureAwait(false);
-        PropertyInfo? resultProperty = task.GetType().GetProperty("Result");
-        var document = resultProperty.GetValue(task);
 
-        if (document is IDocument)
-            return document;
-        if (document is IEnumerable<IDocument> documents)
-            return documents.ToList();
-        return null;
+    [HttpGet("/delete/{documentType}/{collectionName}/{id}")]
+    public async Task<IActionResult> DeleteDocument(string documentType, string collectionName, string id)
+    {
+        Type bsonDocumentType = Type.GetType($"Mongodb_Boilerplate.Models.{documentType}");
+        if (bsonDocumentType == null)
+        {
+            return BadRequest("Invalid Document/model-class type");
+        }
+        var document = await GenericTypeConverter.genericTypeConversion(_database, "GetDocumentByIdAsync", bsonDocumentType, new object[] { collectionName, id });
+        if (document == null)
+        {
+            return NotFound();
+        }
+        await GenericTypeConverter.genericTypeConversion(_database, "DeleteDocumentByIdAsync", bsonDocumentType, new object[] { collectionName, id });
+        return NoContent();
     }
+    
+    
+    
 
 
     [HttpGet("{fieldName}/{fieldValue}/{collectionName}")]
