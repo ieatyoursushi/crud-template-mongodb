@@ -23,13 +23,18 @@ public static class GenericTypeConverter
     }
     //goal: randomMethod<TypeVariable>() / randomMethod<bsonDocumentType> in its first intended use
     //application: user inputting model type like a Book or Movie class. (has no connection to return type which can be generic or not)
- 
-    public static async Task<object?> genericTypeConversion(MongoRepository database,string databaseMethod,Type bsonDocumentType, [FromQuery] object[] parameters)
+
+    public static Task<object?> GenericTypeConversionAsync<T>(string methodName,Type bsonDocumentType, [FromQuery] object[] parameters)
     {
-        MethodInfo method = typeof(MongoRepository).GetMethod(databaseMethod).MakeGenericMethod(bsonDocumentType);
-        var task = (Task)method.Invoke(database, parameters); //fires the method
+        return GenericTypeConversionAsync<T>(null, methodName, bsonDocumentType, parameters);
+    }
+
+    public static async Task<object?> GenericTypeConversionAsync<T>(object? classInstance,string methodName,Type bsonDocumentType, [FromQuery] object[] parameters)
+    {
+        MethodInfo method = typeof(T).GetMethod(methodName).MakeGenericMethod(bsonDocumentType);
+        object? invokeInstance = method.IsStatic ? null : classInstance;
+        var task = (Task)method.Invoke(invokeInstance, parameters); //fires the method
         await task.ConfigureAwait(false);
-        Type returnType = method.ReturnType;
         PropertyInfo? resultProperty = task.GetType().GetProperty("Result");
         var document = resultProperty.GetValue(task); //gets the return value (if any)
         switch (document)
@@ -49,4 +54,28 @@ public static class GenericTypeConverter
                 return document;
         }
     }
+    public static object? GenericTypeConversion<T>(object? classInstance,string methodName,Type bsonDocumentType, [FromQuery] object[] parameters)
+    {
+        MethodInfo method = typeof(T).GetMethod(methodName).MakeGenericMethod(bsonDocumentType);
+        object? invokeInstance = method.IsStatic ? null : classInstance;
+        var document = method.Invoke(invokeInstance, parameters); //fires the method
+ //gets the return value (if any)
+        switch (document)
+        {
+            //scalable type condition checker and action
+            case IDocument:
+                return document;
+            case IEnumerable<IDocument> documents:
+                return listTypeConversion(documents, bsonDocumentType);
+            case null:
+                return null;
+            default:
+                if (method.ReturnType == typeof(Task) || method.ReturnType == typeof(void))
+                {
+                    return null;
+                }
+                return document;
+        }
+    }
+    
 }

@@ -7,6 +7,6 @@ namespace Mongodb_Boilerplate.Services;
 public interface IDocument
 {
     [BsonRepresentation(BsonType.ObjectId)] 
-    string? Id { get; set; }
+    string? Id { get; }
 }
 

@@ -11,6 +11,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton( sp => 
     new MongoRepository("mongodb://localhost:27017", "Bookstore"));
+builder.Services.AddSingleton(sp => new MyJsonSerializer());
 
 var app = builder.Build();
 
@@ -26,6 +27,6 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
-
+ 
 app.Run();
 
