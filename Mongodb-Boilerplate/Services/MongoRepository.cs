@@ -48,8 +48,11 @@ public class MongoRepository
     }
 
     public async Task UpdateDocumentAsync<T>(string collectionName, string documentId, T document)
+    where T : IDocument
     {
-        throw new NotImplementedException();
+        document.Id = documentId;
+        var collection = _database.GetCollection<T>(collectionName);
+        await collection.ReplaceOneAsync(x => x.Id == documentId, document);
     }
     //tenary type-loose document retrieving method in progress
     public async Task<List<BsonDocument>> GetDocumentsByIdAsync(string fieldName, string fieldValue, string collectionName)
