@@ -42,7 +42,7 @@ public static class GenericTypeConverter
             //scalable type condition checker and action
             case IDocument:
                 return document;
-            case IEnumerable<IDocument> documents:
+            case IEnumerable<IDocument> documents: 
                 return listTypeConversion(documents, bsonDocumentType);
             case null:
                 return null;
@@ -51,6 +51,7 @@ public static class GenericTypeConverter
                 {
                     return null;
                 }
+
                 return document;
         }
     }

@@ -25,16 +25,22 @@ public class DataController : Controller
         _database = database;
         _jsonSerializer = jsonSerializer;
     }
-
+    private Type GetBsonDocumentType(string documentType)
+    {
+        return Type.GetType($"Mongodb_Boilerplate.Models.{documentType}") 
+               ?? throw new ArgumentException("Invalid Document/model-class type", nameof(documentType));
+    }
     [HttpGet("{documentType}/{collectionName}")]
      public async Task<IActionResult> GetAllDocuments(string documentType, string collectionName)
      {
-         Type bsonDocumentType = Type.GetType($"Mongodb_Boilerplate.Models.{documentType}");
-         if (bsonDocumentType == null)
-         {
-             return BadRequest("Invalid Document/model-class type");
-         } 
-         var documents = await GenericTypeConversionAsync<MongoRepository>(_database,"GetAllDocumentsAsync", bsonDocumentType, new object[] { bsonDocumentType, collectionName }).ConfigureAwait(false) as IList;
+         Type bsonDocumentType = GetBsonDocumentType(documentType);
+         
+         var documents = await GenericTypeConversionAsync<MongoRepository>(
+             _database,
+             "GetAllDocumentsAsync",
+             bsonDocumentType,
+             new object[] { bsonDocumentType, collectionName }
+         ).ConfigureAwait(false) as IList;
          if (documents == null)
          {
              return NotFound();
@@ -45,12 +51,15 @@ public class DataController : Controller
     [HttpGet("search/{documentType}/{collectionName}/{id}")]
     public async Task<IActionResult> GetDocumentByIf(string documentType,string collectionName, string id)
     {
-        Type bsonDocumentType = Type.GetType($"Mongodb_Boilerplate.Models.{documentType}");
-        if (bsonDocumentType == null)
-        {
-            return BadRequest("Invalid Document/model-class type");
-        }
-        var document =  await GenericTypeConversionAsync<MongoRepository>(_database,"GetDocumentByIdAsync", bsonDocumentType, new object?[]{collectionName, id});
+        Type bsonDocumentType = GetBsonDocumentType(documentType);
+        
+        var document =  await GenericTypeConversionAsync<MongoRepository>(
+            _database,
+            "GetDocumentByIdAsync",
+            bsonDocumentType,
+            new object?[]{collectionName, id}
+        );
+        
         if (document == null)
         {
             return NotFound();
@@ -58,15 +67,18 @@ public class DataController : Controller
         return Ok(document);
     }
 
-    [HttpGet("/delete/{documentType}/{collectionName}/{id}")]
+    [HttpGet("delete/{documentType}/{collectionName}/{id}")]
     public async Task<IActionResult> DeleteDocument(string documentType, string collectionName, string id)
     {
-        Type bsonDocumentType = Type.GetType($"Mongodb_Boilerplate.Models.{documentType}");
-        if (bsonDocumentType == null)
-        {
-            return BadRequest("Invalid Document/model-class type");
-        }
-        var document = await GenericTypeConversionAsync<MongoRepository>(_database, "GetDocumentByIdAsync", bsonDocumentType, new object[] { collectionName, id });
+        Type bsonDocumentType = GetBsonDocumentType(documentType);
+        
+        var document = await GenericTypeConversionAsync<MongoRepository>(
+            _database,
+            "GetDocumentByIdAsync",
+            bsonDocumentType,
+            new object[] { collectionName, id }
+        );
+        
         if (document == null)
         {
             return NotFound();
@@ -77,17 +89,25 @@ public class DataController : Controller
     }
     
     [HttpPost("post/{documentType}/{collectionName}")]    
-    //change to accept any type
+    //change to accept any type                                                          
     public async Task<IActionResult> Post(string documentType, string collectionName, [FromBody] JsonElement content)
     {
-        Type bsonDocumentType = Type.GetType($"Mongodb_Boilerplate.Models.{documentType}");
-        if (bsonDocumentType == null)
-        {
-            return BadRequest("Invalid Document/model-class type");
-        }
+        Type bsonDocumentType = GetBsonDocumentType(documentType);
+        
         string jsonString = content.GetRawText();
-        var newDocument = GenericTypeConversion<MyJsonSerializer>(_jsonSerializer,"Deserialize", bsonDocumentType, new object[] { jsonString }) as IDocument;
-        await GenericTypeConversionAsync<MongoRepository>(_database, "PostDocumentAsync", bsonDocumentType, new object[] { collectionName, newDocument });
+        var newDocument = GenericTypeConversion<MyJsonSerializer>(
+            _jsonSerializer,
+            "Deserialize",
+            bsonDocumentType,
+            new object[] { jsonString }
+        ) as IDocument;
+        
+        await GenericTypeConversionAsync<MongoRepository>(
+            _database,
+            "PostDocumentAsync", 
+            bsonDocumentType,
+            new object[] { collectionName, newDocument }
+        );
         
         return CreatedAtAction(
             nameof(GetDocumentByIf),
@@ -99,28 +119,41 @@ public class DataController : Controller
     [HttpPut("update/{documentType}/{collectionName}/{id}")]
     public async Task<IActionResult> Put(string documentType, string collectionName, string id,[FromBody] JsonElement content)
     {
-        Type bsonDocumentType = Type.GetType($"Mongodb_Boilerplate.Models.{documentType}");
-        if (bsonDocumentType == null)
-        {
-            return BadRequest("Invalid Document/model-class type");
-        }
+        Type bsonDocumentType = GetBsonDocumentType(documentType);
         
         string jsonString = content.GetRawText();
-        var newDocument = GenericTypeConversion<MyJsonSerializer>(_jsonSerializer,"Deserialize", bsonDocumentType, new object[] { jsonString }) as IDocument;
-        var document = await GenericTypeConversionAsync<MongoRepository>(_database, "GetDocumentByIdAsync", bsonDocumentType, new object[] { collectionName, id });
+        var newDocument = GenericTypeConversion<MyJsonSerializer>(
+            _jsonSerializer,
+            "Deserialize",
+            bsonDocumentType,
+            new object[] { jsonString }
+        ) as IDocument;
+        
+        var document = await GenericTypeConversionAsync<MongoRepository>(
+            _database,
+            "GetDocumentByIdAsync",
+            bsonDocumentType,
+            new object[] { collectionName, id }
+        );
         if (document == null)
         {
             return NotFound();
         }
-        await GenericTypeConversionAsync<MongoRepository>(_database, "UpdateDocumentAsync", bsonDocumentType, new object[] { collectionName, id, newDocument });
+        
+        await GenericTypeConversionAsync<MongoRepository>(
+            _database,
+            "UpdateDocumentAsync",
+            bsonDocumentType,
+            new object[] { collectionName, id, newDocument }
+        );
+        
         return NoContent();
     }
     
 
 
     [HttpGet("{fieldName}/{fieldValue}/{collectionName}")]
-    public async Task<IActionResult> GetDocumentByQuerySearch(string fieldName, string fieldValue,
-        string collectionName)
+    public async Task<IActionResult> GetDocumentByQuerySearch(string fieldName, string fieldValue, string collectionName)
     {
         List<BsonDocument> document = await _database.GetDocumentsByIdAsync(fieldName, fieldValue, collectionName);
         if (document is null)

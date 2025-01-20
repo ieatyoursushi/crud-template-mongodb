@@ -54,10 +54,14 @@ public class MongoRepository
         var collection = _database.GetCollection<T>(collectionName);
         await collection.ReplaceOneAsync(x => x.Id == documentId, document);
     }
-    //tenary type-loose document retrieving method in progress
+    //type-loose document retrieving method in progress
     public async Task<List<BsonDocument>> GetDocumentsByIdAsync(string fieldName, string fieldValue, string collectionName)
     {
-        var filter = new BsonDocument(fieldName, fieldName=="Id" ? new ObjectId(fieldValue) : BsonValue.Create(fieldValue));
+        var filter = new BsonDocument(
+            fieldName,
+            fieldName=="Id" ? new ObjectId(fieldValue) : BsonValue.Create(fieldValue)
+        );
+        
         var collection = _database.GetCollection<BsonDocument>(collectionName);
         var documents = await collection.Find(filter).ToListAsync();
         return documents;
